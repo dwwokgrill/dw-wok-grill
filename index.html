@@ -59,10 +59,22 @@ textarea{min-height:64px;resize:vertical}
 .err{color:var(--red);font-weight:600;margin:10px 0 0;min-height:1.4em}
 .back{border:0;background:none;color:var(--ink);font:700 16px "Source Sans 3",sans-serif;padding:12px 0;cursor:pointer}
 .none{color:var(--muted);text-align:center;padding:30px 10px}
+.lcard{background:#111;color:#f4efe3;border:2px solid var(--accent);border-radius:16px;padding:18px;margin-bottom:12px}
+.lb{font:400 22px Anton,Impact,sans-serif;color:var(--accent)}.lb span{color:#f4efe3;font:600 15px "Source Sans 3",sans-serif}
+.lcard label{margin:12px 0 2px}
+.lcard input{background:transparent;color:#f4efe3;border:0;border-bottom:1.5px solid var(--accent);border-radius:0;padding:8px 0}
+.stamps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+.st{aspect-ratio:1;border-radius:50%;border:2px dashed var(--accent);display:grid;place-items:center;font:400 19px Anton,Impact,sans-serif;color:var(--accent)}
+.st.on{background:var(--accent);color:#111;border-style:solid}
+.lmsg{margin:0;font-weight:700}
+details.card summary{cursor:pointer;font-weight:700}
+input[type=password]{width:100%;padding:11px;border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.topr{display:flex;gap:8px}
+button.call{border:0;font-family:inherit;cursor:pointer}
 </style>
 </head>
 <body>
-<div class="top"><span class="logo">D&amp;W<small>Wok &amp; Grill</small></span><a class="call" href="tel:03335353836">Call us</a></div>
+<div class="top"><span class="logo">D&amp;W<small>Wok &amp; Grill</small></span><div class="topr"><button class="call" data-view="loyalty">Loyalty card</button><a class="call" href="tel:03335353836">Call us</a></div></div>
 <div id="app"></div>
 <div id="bar" class="bar" hidden></div>
 <script>
@@ -154,6 +166,22 @@ function msg(){
   if(S.notes.trim())l.push("","Notes: "+S.notes.trim());
   return l.join("\n");
 }
+const LN=8,STAFF_PIN="1234";let LC={name:"",stamps:0};
+try{const r=JSON.parse(localStorage.getItem("dw-loyal")||"{}");LC.name=r.name||"";LC.stamps=Math.max(0,Math.min(+r.stamps||0,99))}catch(e){}
+const lsave=()=>{try{localStorage.setItem("dw-loyal",JSON.stringify(LC))}catch(x){}};
+function loyaltyHTML(){
+  const rdy=LC.stamps>=LN,left=LN-LC.stamps;let st="";
+  for(let i=0;i<LN;i++)st+=`<div class="st${i<LC.stamps?" on":""}">${i<LC.stamps?"★":(i===LN-1?"FREE":i+1)}</div>`;
+  return `<main><button class="back" data-view="menu">← Back to menu</button>
+  <div class="lcard"><div class="lb">D&amp;W <span>Wok &amp; Grill · Loyalty card</span></div>
+  <label for="ln">Card holder</label><input type="text" id="ln" value="${esc(LC.name)}" placeholder="Your name" autocomplete="name">
+  <div class="stamps">${st}</div>
+  <p class="lmsg">${rdy?"Reward ready! Show this card to our staff.":left+(left===1?" more stamp":" more stamps")+" to your FREE reward."}</p></div>
+  <div class="card"><b>How it works</b><p class="note">Get 1 stamp with every order of Rs. 1,000 or more. Collect 8 stamps and get a FREE reward. Your card is saved on this phone. Show it to our staff after each order to get your stamp.</p></div>
+  <details class="card"><summary>Staff only</summary><label for="pin">PIN</label><input type="password" id="pin" inputmode="numeric" autocomplete="off">
+  <div class="seg" style="margin-top:10px"><button data-stamp="1">Add stamp</button>${rdy?'<button data-redeem="1">Redeem reward</button>':""}</div>
+  <p class="err" id="lerr" role="alert"></p></details></main>`;
+}
 function bar(){
   const b=$("#bar");
   if(S.view==="menu"&&count()){b.hidden=false;b.innerHTML=`<button class="btn" data-view="checkout"><span>View order (${count()})</span><span>${fmt(total())}</span></button>`}
@@ -162,7 +190,7 @@ function bar(){
 function render(keep){
   const y=window.scrollY,cats=$(".cats"),cx=cats?cats.scrollLeft:0;
   if(S.view==="checkout"&&!count())S.view="menu";
-  $("#app").innerHTML=S.view==="menu"?menuHTML():checkoutHTML();
+  $("#app").innerHTML=S.view==="menu"?menuHTML():S.view==="loyalty"?loyaltyHTML():checkoutHTML();
   bar();
   if(S.view==="menu"){window.scrollTo(0,keep?y:Math.min(y,0));const c=$(".cats");if(c)c.scrollLeft=cx}
 }
@@ -182,9 +210,12 @@ document.addEventListener("click",e=>{
   else if(d.inc){S.cart[d.inc].qty++;render(true)}
   else if(d.dec){if(--S.cart[d.dec].qty<=0)delete S.cart[d.dec];render(true)}
   else if(d.type){S.type=d.type;render(true)}
+  else if(d.stamp||d.redeem){const p=$("#pin");if(!p||p.value!==STAFF_PIN){$("#lerr").textContent="Wrong PIN.";return}
+    if(d.stamp){if(LC.stamps<LN)LC.stamps++}else LC.stamps=Math.max(0,LC.stamps-LN);lsave();render()}
   else if(d.view){S.view=d.view;render();window.scrollTo(0,0)}
 });
 document.addEventListener("input",e=>{const k=e.target.id;if(k in {name:1,phone:1,addr:1,notes:1}){S[k]=e.target.value;const r=$("#err");if(r)r.textContent=""}});
+document.addEventListener("input",e=>{if(e.target.id==="ln"){LC.name=e.target.value;lsave()}});
 render();
 </script>
 </body>
