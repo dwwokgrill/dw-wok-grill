@@ -177,10 +177,10 @@ function loyaltyHTML(){
   <label for="ln">Card holder</label><input type="text" id="ln" value="${esc(LC.name)}" placeholder="Your name" autocomplete="name">
   <div class="stamps">${st}</div>
   <p class="lmsg">${rdy?"Reward ready! Show this card to our staff.":left+(left===1?" more stamp":" more stamps")+" to your FREE reward."}</p></div>
-  <div class="card"><b>How it works</b><p class="note">Get 1 stamp with every order of Rs. 1,000 or more. Collect 8 stamps and get a FREE reward. Your card is saved on this phone. Show it to our staff after each order to get your stamp.</p></div>
-  <details class="card"><summary>Staff only</summary><label for="pin">PIN</label><input type="password" id="pin" inputmode="numeric" autocomplete="off">
-  <div class="seg" style="margin-top:10px"><button data-stamp="1">Add stamp</button><button data-unstamp="1">Remove stamp</button>${rdy?'<button data-redeem="1">Redeem reward</button>':""}</div>
-  <p class="err" id="lerr" role="alert"></p></details></main>`;
+  <div class="card"><b>How it works</b><p class="note">You get 1 stamp automatically each time you send an order of Rs. 1,000 or more on WhatsApp. Collect 8 stamps and get a FREE reward. Your card is saved on this phone.</p></div>
+  <div class="card"><b>Order not received?</b><p class="note">A stamp is added automatically when you send an order of Rs. 1,000 or more. If we did not receive your order, remove the stamp here.</p>
+  <div class="seg"><button data-unstamp="1"${LC.stamps?"":" disabled"}>Remove last stamp</button></div></div>
+  ${rdy?`<details class="card"><summary>Staff only</summary><label for="pin">PIN</label><input type="password" id="pin" inputmode="numeric" autocomplete="off"><div class="seg" style="margin-top:10px"><button data-redeem="1">Redeem reward</button></div><p class="err" id="lerr" role="alert"></p></details>`:""}</main>`;
 }
 function bar(){
   const b=$("#bar");
@@ -201,6 +201,7 @@ document.addEventListener("click",e=>{
     if(miss){e.preventDefault();$("#err").textContent=miss;return}
     s.href="https://wa.me/"+WA+"?text="+encodeURIComponent(msg());
     try{localStorage.setItem("dw-cust",JSON.stringify({name:S.name,phone:S.phone,addr:S.addr}))}catch(x){}
+    if(total()>=1000&&LC.stamps<LN&&Date.now()-(LC.last||0)>300000){LC.stamps++;LC.last=Date.now();lsave()}
     return;
   }
   const b=e.target.closest("button");if(!b)return;const d=b.dataset;
@@ -210,8 +211,8 @@ document.addEventListener("click",e=>{
   else if(d.inc){S.cart[d.inc].qty++;render(true)}
   else if(d.dec){if(--S.cart[d.dec].qty<=0)delete S.cart[d.dec];render(true)}
   else if(d.type){S.type=d.type;render(true)}
-  else if(d.stamp||d.unstamp||d.redeem){const p=$("#pin");if(!p||p.value!==STAFF_PIN){$("#lerr").textContent="Wrong PIN.";return}
-    if(d.stamp){if(LC.stamps<LN)LC.stamps++}else if(d.unstamp){LC.stamps=Math.max(0,LC.stamps-1)}else LC.stamps=Math.max(0,LC.stamps-LN);lsave();render()}
+  else if(d.unstamp){LC.stamps=Math.max(0,LC.stamps-1);LC.last=0;lsave();render()}
+  else if(d.redeem){const p=$("#pin");if(!p||p.value!==STAFF_PIN){$("#lerr").textContent="Wrong PIN.";return}LC.stamps=Math.max(0,LC.stamps-LN);LC.last=0;lsave();render()}
   else if(d.view){S.view=d.view;render();window.scrollTo(0,0)}
 });
 document.addEventListener("input",e=>{const k=e.target.id;if(k in {name:1,phone:1,addr:1,notes:1}){S[k]=e.target.value;const r=$("#err");if(r)r.textContent=""}});
